@@ -55,14 +55,14 @@ public abstract class GateIntakeWithFarAuto extends RobotOpMode {
     private static final double FIELD_WIDTH = 141.5;
     // Fallback: if we only ever get 0-1 balls at the gate, leave after this so the
     // routine always moves on (never sits stuck when balls just aren't coming).
-    private static final long GATE_INTAKE_TIMEOUT_MS = 1000;
+    private static final long GATE_INTAKE_TIMEOUT_MS = 950;
     // Target is at least 2 balls: once we reach 2, give a 3rd this long to seat,
     // then leave. REPLACES the fallback timeout - it is not added on top of it.
-    private static final long GATE_TWO_BALL_SETTLE_MS = 500;
+    private static final long GATE_TWO_BALL_SETTLE_MS = 300;
     // Safety net so a follower that never settles (didn't quite reach the gate
     // position) can't leave the robot stuck: the gate drive gives up after this
     // and the sequence moves on. Tune to just above the real gate drive time.
-    private static final long GATE_DRIVE_TIMEOUT_MS = 1500;
+    private static final long GATE_DRIVE_TIMEOUT_MS = 1000;
     // Hard cap on the gate intake wait: no matter what the ball logic says, leave
     // and head back after this so the robot can never sit stuck at the gate.
     private static final long GATE_HARD_TIMEOUT_MS = 2000;
@@ -83,7 +83,7 @@ public abstract class GateIntakeWithFarAuto extends RobotOpMode {
     // usually ready within a few hundred ms of arriving; atTarget() fires the shot
     // as soon as it's ready. This is only the fallback cap. RAISE this if shots come
     // out weak (fired before the flywheel was up to speed).
-    private static final long SHOOT_READY_TIMEOUT_MS = 1000;
+    private static final long SHOOT_READY_TIMEOUT_MS = 600;
     // Safety net for sweep drives: with the parametric-end early exit (see
     // followWithTimeout) the sweep normally finishes as soon as it reaches the end, so
     // this only caps a follower that never gets there. Must be COMFORTABLY longer than the
@@ -106,19 +106,23 @@ public abstract class GateIntakeWithFarAuto extends RobotOpMode {
     // long enough for the artifacts to launch. This cap lets the routine start the next
     // drive while the tail of the rotation finishes, instead of sitting idle. Raise it if
     // the last shot of a volley goes wide (i.e. it's driving off before the ball is out).
-    private static final long SHOOT_ROTATE_TIMEOUT_MS = 1000;
+    private static final long SHOOT_ROTATE_TIMEOUT_MS = 100;
     // Terminal (last) shot only: parking doesn't need to wait out the whole volley turn -
     // the balls launch early and the spindexer finishes its turn on its own while the robot
     // drives off. Use a shorter post-fire wait so it heads to park sooner. Raise it toward
     // SHOOT_ROTATE_TIMEOUT_MS if the last ball of the final volley starts going wide.
-    private static final long LAST_SHOT_POSTFIRE_WAIT_MS = 500;
+    private static final long LAST_SHOT_POSTFIRE_WAIT_MS = 100;
     // Shot gating (replaces the old fixed pre-delays): fire only once the robot is
     // within SHOOT_POSE_TOLERANCE_IN of the shoot pose AND the turret is within
     // TURRET_AIM_TOLERANCE_DEG of its aim target. That stops the random early shot
     // (firing while the turret was still swinging). No wait - fires as soon as those
     // (plus the flywheel) line up.
     private static final double SHOOT_POSE_TOLERANCE_IN = 5.0;
-    private static final double TURRET_AIM_TOLERANCE_DEG = 5.0;
+    // Gate shots specifically were firing ~5 in out while still approaching the shoot pose.
+    // Before a gate shot we wait for a TIGHTER arrival than SHOOT_POSE_TOLERANCE_IN so the
+    // robot actually reaches the position first (both alliances).
+    private static final double GATE_SHOOT_POSE_TOLERANCE_IN = 2.0;
+    private static final double TURRET_AIM_TOLERANCE_DEG = 2.0;
     // RED only: after the 2nd-row sweep, rotate to field-0 heading before firing (the
     // mirrored tangent arrival heading would swing the turret past its limit, same reason
     // the RED preload faces 0). Wait for the turn to settle within this tolerance, capped
@@ -135,7 +139,7 @@ public abstract class GateIntakeWithFarAuto extends RobotOpMode {
     // pickup runs at 0.7 power for cleaner collection (was full 1.0). The ball zone
     // above is a touch slower still (ROW_SLOW_POWER). Restored to 1.0 after each
     // pickup so the gate/preload/park drives stay full speed.
-    private static final double ROW_PICKUP_MAX_POWER = 0.7;
+    private static final double ROW_PICKUP_MAX_POWER = 0.6;
     // Run the whole auto above the default priority (0). The Spindexer periodic
     // schedules jam-recovery commands that require the same spindexer/intake motors
     // this Sequential holds; at equal priority those would OVERRIDE and kill the
@@ -155,8 +159,8 @@ public abstract class GateIntakeWithFarAuto extends RobotOpMode {
     // convention). Applied via Constants.turretAimOffsetDegrees during auto and
     // reset to 0 at the end so it doesn't leak into TeleOp. The preload shot needs
     // more right bias than the rest.
-    private static final double FIRST_SHOT_TURRET_OFFSET_DEGREES = -8.0; // preload: pushed further RIGHT (was -5)
-    private static final double REST_SHOT_TURRET_OFFSET_DEGREES = -7.0;   // 2nd-row shot
+    private static final double FIRST_SHOT_TURRET_OFFSET_DEGREES = -7.0; // preload: pushed further RIGHT (was -5)
+    private static final double REST_SHOT_TURRET_OFFSET_DEGREES = 15.0;   // 2nd-row shot
     // Gate-cycle shots: +3 (less negative) on top of REST, per the gate-shot tweak.
     private static final double GATE_SHOT_TURRET_OFFSET_DEGREES = -4.0;   // gate intake shoot cycles (REST + 3)
     // The first-row shot (after the gate cycles) keeps its own bias, offset from the
@@ -168,7 +172,12 @@ public abstract class GateIntakeWithFarAuto extends RobotOpMode {
     // RED only: extra bias added to the FIRST (preload) shot's offset, on top of the
     // mirrored value. Applied in init(); the offset switches to REST after the first shot,
     // so this affects the preload only. BLUE is unaffected.
-    private static final double RED_FIRST_SHOT_EXTRA_DEGREES = -6.0;
+    private static final double RED_FIRST_SHOT_EXTRA_DEGREES = -15.0;    // preload: 5 less than before (-6)
+    // RED only: extra bias for the 2nd-row (REST) shot, added when the REST offset is set.
+    // BLUE is unaffected. Positive = increase the offset for that shot.
+
+    private static final double RED_SECOND_ROW_EXTRA_DEGREES = -50.0;
+    //Added to rest shot, make sure to account for that
 
     /** BLUE uses the authored coordinates; RED mirrors them across the field. */
     protected abstract Alliance alliance();
@@ -232,9 +241,11 @@ public abstract class GateIntakeWithFarAuto extends RobotOpMode {
         CommandBuilder auto = instant(() -> aimTargetPose = preloadShootPose())
                 .then(followWithTimeout(startToShoot, SWEEP_TIMEOUT_MS))
                 .then(shootWhenReady())
-                // Preload done: drop to the 2nd-row bias (flipped for RED).
-                .then(instant(() -> Constants.turretAimOffsetDegrees = turretOffset(REST_SHOT_TURRET_OFFSET_DEGREES)))
-                .then(instant(() -> aimTargetPose = pose(57, 78, 246)))
+                // Preload done: drop to the 2nd-row bias (flipped for RED, +5 more on RED).
+                .then(instant(() -> Constants.turretAimOffsetDegrees =
+                        turretOffset(REST_SHOT_TURRET_OFFSET_DEGREES)
+                                + (mirror ? RED_SECOND_ROW_EXTRA_DEGREES : 0.0)))
+                .then(instant(() -> aimTargetPose = secondRowShootPose()))
                 // RED only: turn to field-0 before this shot (see turnToZeroBeforeShootIfRed).
                 .then(secondRowSweepAutomatic())
                 .then(shootWhenReady());
@@ -356,6 +367,12 @@ public abstract class GateIntakeWithFarAuto extends RobotOpMode {
                         robot.intake.off().then(robot.spindexer.setIntaking(false)),
                         noOp()))
                 .then(followWithTimeout(returnPath, GATE_DRIVE_TIMEOUT_MS))
+                // Don't fire until the robot has actually REACHED the shoot pose. The gate
+                // shot was firing ~5 in out while still approaching; wait for a tighter
+                // arrival (the follower keeps closing to the path end during this wait),
+                // capped so it can't stall. Applies to both alliances.
+                .then(waitUntil(() -> nearShootPose(GATE_SHOOT_POSE_TOLERANCE_IN))
+                        .raceWith(waitMs(GATE_DRIVE_TIMEOUT_MS)))
                 // Keep intaking through the shot so we keep grabbing balls; the
                 // mid-cycle check above already stopped it if we hit 3. Do NOT force
                 // it off here - the shoot rotation pauses auto-indexing on its own.
@@ -395,10 +412,15 @@ public abstract class GateIntakeWithFarAuto extends RobotOpMode {
 
     /** True once the robot is within SHOOT_POSE_TOLERANCE_IN of the current shoot pose. */
     private boolean nearShootPose() {
+        return nearShootPose(SHOOT_POSE_TOLERANCE_IN);
+    }
+
+    /** True once the robot is within toleranceIn of the current shoot pose. */
+    private boolean nearShootPose(double toleranceIn) {
         Pose p = robot.drivetrain.getPose();
         if (p == null || aimTargetPose == null) return false;
         return Math.hypot(p.getX() - aimTargetPose.getX(), p.getY() - aimTargetPose.getY())
-                <= SHOOT_POSE_TOLERANCE_IN;
+                <= toleranceIn;
     }
 
     /**
@@ -456,6 +478,14 @@ public abstract class GateIntakeWithFarAuto extends RobotOpMode {
         double x = mirror ? FIELD_WIDTH - 64 : 64;
         double headingRad = mirror ? 0.0 : Math.toRadians(270);
         return new Pose(x, 72, headingRad);
+    }
+
+    /**
+     * 2nd-row shoot pose (also the aim target for that shot). RED is pulled in from BLUE's
+     * (57,78): authored (63,75) -> field (78.5,75), i.e. -6 in x and -3 in y. Tunable.
+     */
+    private Pose secondRowShootPose() {
+        return pose(mirror ? 63 : 57, mirror ? 75 : 78, 246);
     }
 
     /**
@@ -575,7 +605,7 @@ public abstract class GateIntakeWithFarAuto extends RobotOpMode {
                     .addPath(new BezierCurve(
                             pose(27.6546, 131.6139, 322.5094),
                             pose(64, 100.65, 270),
-                            pose(64, 72, 270)))
+                            pose(64, 82, 270)))
                     .setLinearHeadingInterpolation(hdg(322.5094), 0.0)
                     .build();
         } else {
@@ -583,7 +613,7 @@ public abstract class GateIntakeWithFarAuto extends RobotOpMode {
                     .addPath(new BezierCurve(
                             pose(27.6546, 131.6139, 322.5094),
                             pose(64, 100.65, 270),
-                            pose(64, 72, 270)))
+                            pose(64, 82, 270)))
                     .setTangentHeadingInterpolation()
                     .build();
         }
@@ -592,14 +622,16 @@ public abstract class GateIntakeWithFarAuto extends RobotOpMode {
         secondRowSweep = robot.drivetrain.follower.pathBuilder()
                 .addPath(new BezierCurve(pose(60, 72, 270), pose(55.77, 62, 180), pose(14, 62, 180)))
                 .setTangentHeadingInterpolation()
-                .addPath(new BezierCurve(pose(14, 62, 180), pose(46, 62, 180), pose(57, 78, 180)))
+                .addPath(new BezierCurve(pose(14, 62, 180), pose(46, 62, 180), pose(64, 78, 180)))
                 .setTangentHeadingInterpolation()
                 .setReversed()
                 .build();
         secondRowSweepRed = robot.drivetrain.follower.pathBuilder()
                 .addPath(new BezierCurve(pose(60, 72, 270), pose(55.77, 62, 180), pose(14, 62, 180)))
                 .setTangentHeadingInterpolation()
-                .addPath(new BezierCurve(pose(14, 62, 180), pose(46, 62, 180), pose(57, 78, 180)))
+                // Ends at the RED 2nd-row shoot pose (63,75) = field (78.5,75): -6 x, -3 y
+                // vs the old (57,78). Holds field-0 heading (hdg(180)==0 mirrored).
+                .addPath(new BezierCurve(pose(14, 62, 180), pose(46, 62, 180), pose(66, 80, 180)))
                 .setLinearHeadingInterpolation(hdg(180), hdg(180))
                 .build();
         shootToGate = robot.drivetrain.follower.pathBuilder()
@@ -615,7 +647,7 @@ public abstract class GateIntakeWithFarAuto extends RobotOpMode {
         // up and the next shootToGate begins from the same place. Curved via
         // (51,55) but heading stays linear.
         gateToShoot = robot.drivetrain.follower.pathBuilder()
-                .addPath(new BezierCurve(pose(11, mirror ? 57 : 55, 107), pose(51, 55, 145), pose(57, 78, 180)))
+                .addPath(new BezierCurve(pose(11, mirror ? 57 : 55, 107), pose(51, 55, 145), pose(65, 78, 180)))
                 .setLinearHeadingInterpolation(hdg(107), hdg(180))
                 .build();
         // Last gate cycle only: return to (57,88), which is where the first-row
@@ -631,7 +663,7 @@ public abstract class GateIntakeWithFarAuto extends RobotOpMode {
                 .setTangentHeadingInterpolation()
                 .build();
         firstRowOut = robot.drivetrain.follower.pathBuilder()
-                .addPath(new BezierLine(pose(18, 88, 180), pose(47, 88, 180)))
+                .addPath(new BezierLine(pose(18, 88, 180), pose(57, 88, 180)))
                 .setTangentHeadingInterpolation()
                 .setReversed()
                 .build();

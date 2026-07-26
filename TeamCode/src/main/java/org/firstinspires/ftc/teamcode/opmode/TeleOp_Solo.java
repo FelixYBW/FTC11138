@@ -192,9 +192,9 @@ public class TeleOp_Solo extends RobotOpMode {
         }
         gamepad2LeftTriggerWasDown = leftTrigger;
 
-        if (gamepad2.leftBumperWasPressed()) {
-            toggleIntake();
-        }
+//        if (gamepad2.leftBumperWasPressed()) {
+//            toggleIntake();
+//        }
 
         boolean rightTrigger = gamepad2.right_trigger > MANUAL_INDEX_TRIGGER_THRESHOLD;
         if (rightTrigger && !gamepad2RightTriggerWasDown) {
@@ -258,6 +258,10 @@ public class TeleOp_Solo extends RobotOpMode {
                 }
                 robot.shooter.turnOn();
             }
+        }
+
+        if (gamepad2.leftBumperWasPressed()){
+            robot.spindexer.nudgeDegrees(4);
         }
 
         handleSpindexerFull();
