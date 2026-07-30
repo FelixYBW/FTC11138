@@ -65,9 +65,9 @@ public abstract class FarZoneAuto extends RobotOpMode {
     // applied by position on ONE continuous chain (so the follower never decelerates at
     // a seam) rather than by splitting the drive, which would cost a stop each seam.
     private static final double FULL_POWER = 1.0;
-    private static final double HALF_POWER = 0.5;
+    private static final double HALF_POWER = 0.65;
 
-    private static final double INTAKE_POWER = 0.5;
+    private static final double INTAKE_POWER = 0.65;
     // Corner-stack feed power. Faster than the row's HALF_POWER so the cycle isn't
     // sluggish, but still throttled below full so the intake actually seats the stack.
     private static final double CORNER_INTAKE_POWER = 0.5;
@@ -95,7 +95,7 @@ public abstract class FarZoneAuto extends RobotOpMode {
     private static final double FIRST_SHOT_TURRET_OFFSET_DEGREES = -4.5;  // preload: dialed in, keep
 
     private static final double LAST_SHOT_TURRET_OFFSET_DEGREES = -6.2;
-    private static final double REST_SHOT_TURRET_OFFSET_DEGREES = -3.0;   // row+gate: nudged left from -4
+    private static final double REST_SHOT_TURRET_OFFSET_DEGREES = 1.0;   // row+gate: nudged left from -4
     // RED only: extra bias added on top of the mirrored offset (negative = right). Applied
     // where the offset is set, so BLUE is unaffected.
     private static final double RED_FIRST_SHOT_EXTRA_DEGREES = -7.3;      // preload: 5 more

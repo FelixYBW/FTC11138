@@ -29,6 +29,10 @@ public class Shooter {
     private boolean on = false;
     private double target = 0;
     private double hoodTarget = Constants.adjHoodMin;
+    // The hood servo is not commanded until the shooter is first used (turnOn /
+    // setHoodPosition). This keeps it from snapping to adjHoodMin the instant the
+    // periodic starts running at init - it stays wherever it physically is.
+    private boolean hoodActive = false;
 
     public Shooter(Robot robot) {
         flywheelMotorTop = robot.hardwareMap.get(DcMotorEx.class, HardwareNames.flywheelTop);
@@ -88,6 +92,7 @@ public class Shooter {
     public void setHoodPosition(double hoodPosition) {
         hoodTarget = Range.clip(hoodPosition, Constants.adjHoodMax, Constants.adjHoodServoMax);
         hoodOverride = true;
+        hoodActive = true;
     }
 
     private void setPower(double power) {
@@ -149,6 +154,7 @@ public class Shooter {
 
     public void turnOn() {
         on = true;
+        hoodActive = true;
     }
 
     public void turnOff() {
@@ -200,11 +206,15 @@ public class Shooter {
                 setPower(0);
             }
 
-            adjustableHood.setPosition(Range.clip(
-                    hoodTarget,
-                    Constants.adjHoodMax,
-                    Constants.adjHoodServoMax
-            ));
+            // Don't drive the hood until the shooter has actually been used, so it
+            // doesn't snap to adjHoodMin the moment the periodic starts at init.
+            if (hoodActive) {
+                adjustableHood.setPosition(Range.clip(
+                        hoodTarget,
+                        Constants.adjHoodMax,
+                        Constants.adjHoodServoMax
+                ));
+            }
 
             telemetry.addData("Shooter Distance", goalDistance);
             telemetry.addData("Shooter On", on);

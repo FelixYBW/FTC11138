@@ -261,7 +261,7 @@ public class TeleOp_Solo extends RobotOpMode {
         }
 
         if (gamepad2.leftBumperWasPressed()){
-            robot.spindexer.nudgeDegrees(4);
+            robot.spindexer.nudgeDegrees(4).schedule();
         }
 
         handleSpindexerFull();
