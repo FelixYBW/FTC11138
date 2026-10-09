@@ -49,6 +49,9 @@ The Pedro tuning OpModes (`Tuning.java`) were deleted from this repo in commit `
 re-tune, restore them with `git show 8a7f7f0:TeamCode/src/main/java/org/firstinspires/ftc/teamcode/pedroPathing/Tuning.java`
 or copy them from the [Pedro Pathing quickstart](https://github.com/Pedro-Pathing/Quickstart).
 
+For step-by-step instructions on measuring and calculating every value on a new robot,
+see [pedro-tuning-new-robot.md](pedro-tuning-new-robot.md).
+
 ---
 
 ## 2. `MecanumConstants`: the drivetrain
