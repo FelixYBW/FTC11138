@@ -1,4 +1,4 @@
-package org.firstinspires.ftc.teamcode.opmode;
+package org.firstinspires.ftc.teamcode;
 
 import com.pedropathing.follower.Follower;
 import com.pedropathing.geometry.BezierLine;
@@ -27,7 +27,7 @@ import static com.pedropathing.ivy.pedro.PedroCommands.follow;
  * each move ends as soon as the robot reaches the path's parametric end or LEG_TIMEOUT_MS
  * elapses - it does not sit out the follower's settle before starting the next move.
  */
-@Autonomous(name = "AutoPath (Pedro)", group = "Autonomous")
+@Autonomous(name = "AutoPath_Pedro", group = "Autonomous")
 public class AutoPathPedro extends LinearOpMode {
     // Inches. The robot starts on the first point facing START_HEADING_DEGREES.
     private static final double[][] POINTS = {

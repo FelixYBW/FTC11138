@@ -3,9 +3,9 @@
 This project has three ways of driving the robot from (fromX, fromY) to (toX, toY):
 
 1. **`path.java`**: auto-generated code at the repo root.
-2. **`master`'s competition autos** (`opmode/FarZoneAuto.java`), now also used by
-   **`opmode/AutoPathPedro.java`** on the `autopath-pedro` branch.
-3. **`AutoPath.java`**: a hand-written PID controller, on the `minimal-drive-forward` branch.
+2. **`master`'s competition autos** (`opmode/FarZoneAuto.java`, on the `master` branch),
+   reused in this project by **`AutoPathPedro.java`**.
+3. **`AutoPath.java`**: a hand-written PID controller.
 
 All three drive the same idea: move along straight lines between points, facing the
 direction of travel. They differ in **who steers** and **when a move counts as finished**.
@@ -63,7 +63,7 @@ generator's notes of the resulting tangent, and all match `atan2(dy, dx)`.
 
 ## 2. `master`: Pedro paths that advance on arrival
 
-From `opmode/FarZoneAuto.java`:
+From `opmode/FarZoneAuto.java` on the `master` branch:
 
 ```java
 rowCollect = robot.drivetrain.follower.pathBuilder()
@@ -114,21 +114,21 @@ smooth runs such as approach-then-sweep, and separate chains where it wants a ha
 
 ### `AutoPathPedro.java`
 
-`AutoPathPedro` (Driver Station name **AutoPath (Pedro)**) runs `path.java`'s 8 moves in
+`AutoPathPedro` (Driver Station name **AutoPath_Pedro**) runs `path.java`'s 8 moves in
 `master`'s style:
 
 - Each move is a one-segment `PathChain`: a `BezierLine` with tangent heading.
 - Each move is followed with the same `followWithTimeout` race (parametric end or 5 s).
 - After the last move, the follower keeps holding the final point.
-- It's a standalone `LinearOpMode`. It doesn't start the shooter, turret, intake or other
-  subsystems the way `RobotOpMode` does.
+- It's a standalone `LinearOpMode` that only uses the drive and odometry. It needs the ivy
+  command library (`com.pedropathing:ivy`), which `build.dependencies.gradle` includes.
 - The Driver Station shows live x / y and heading during INIT and while running. After each
   move, a line is added: target, actual position, heading, how far off, `arrived` or
   `TIMEOUT`, and time.
 
 ## 3. `AutoPath.java`: hand-written PID
 
-On the `minimal-drive-forward` branch (see `doc/autopath.md` there).
+See [autopath.md](autopath.md) for its route and tuning.
 
 **How it drives:**
 
