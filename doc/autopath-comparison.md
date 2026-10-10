@@ -14,7 +14,7 @@ direction of travel. They differ in **who steers** and **when a move counts as f
 
 | | 1. `path.java` (generated) | 2. `master` / `AutoPathPedro` | 3. `AutoPath` (PID) |
 |---|---|---|---|
-| Builds in this project | **No**: written for a newer Pedro API | Yes | Yes |
+| Builds in this project | **No** (Pedro 3.x API); translated as `AutoPathGenerated` | Yes | Yes |
 | Who steers | Pedro `Follower` | Pedro `Follower` (tuned constants) | Hand-written distance + heading PID |
 | Path shape | One `Path` per move | One `PathChain` per move (`master` also chains several segments) | Straight legs, no path objects |
 | Heading | `tangent()` | `setTangentHeadingInterpolation()` | Computed `atan2(dy, dx)` and held by a PID |
@@ -56,6 +56,17 @@ uses:
 | `com.pedropathing.math.Pose`, `pose().x()` | `com.pedropathing.geometry.Pose`, `getPose().getX()` |
 | `Constants.create(hardwareMap)` | `Constants.createFollower(hardwareMap)` |
 | `follower.distanceToEndpoint()`, `pathIndex()` | not available |
+
+**Why it can't be used as-is:** `path.java` targets **Pedro Pathing 3.x** (core 3.0.1 on
+Maven Central has all of the calls above). Pedro's FTC library, which drives the motors and
+reads the Pinpoint, isn't published for 3.x, and the ivy command library only exists for
+Pedro 2. This project therefore stays on 2.1.2.
+
+**`AutoPathGenerated.java`** (Driver Station name **AutoPath_Generated**) is `path.java`
+translated line-for-line to Pedro 2.1.2. It has the same poses, the same 8 tangent lines and
+the same `sequential(follow(...))` routine, so it settles at every point. Each changed call is
+commented with its `path.java` original. `pathIndex()` is replaced with a move counter,
+because with one path per `follow` it would always read 0.
 
 **Only the start heading is used.** `tangent()` computes the heading from the line, so the
 headings on the other points (`88.678`, `-101.3099`, ...) are ignored. They're the
@@ -151,7 +162,7 @@ measurements.
 | Goal | Use |
 |---|---|
 | Fast autonomous that flows from move to move, like the competition autos | **2**: `AutoPathPedro` / `master` style |
-| Stop precisely on every point | **1**: `path.java`'s style (one `follow` per move, full settle), translated to Pedro 2.1.2 |
+| Stop precisely on every point | **1**: `AutoPathGenerated` (`path.java` translated to Pedro 2.1.2) |
 | Learning how PID works, or driving without Pedro's path follower | **3**: `AutoPath` |
 
 To flow through points that don't need a hand-off, put them in **one** `PathChain` with

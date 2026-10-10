@@ -5,6 +5,9 @@ drives the route defined in `path.java`: eight straight segments, each with **ta
 heading (the robot faces its direction of travel), and a PID stop at every point.
 Select it on the Driver Station as **AutoPath** in the Autonomous list.
 
+The same route also runs with Pedro's path follower as **AutoPath_Pedro** and
+**AutoPath_Generated**; see [autopath-comparison.md](autopath-comparison.md) for how they differ.
+
 ## Route
 
 The robot starts at **(55.4, 0)** facing **90°** (+y). Units are inches; headings are
