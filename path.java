@@ -67,6 +67,7 @@ public class AutoPath extends LinearOpMode {
 
             if (follower.currentPath() != null) {
                 telemetry.addData("Current path distance remaining", follower.distanceToEndpoint());
+                // follower.pathIndex() counts segments within one path; each path here is one segment.
                 telemetry.addData("Path number", follower.pathIndex());
             }
 
@@ -106,4 +107,3 @@ public class AutoPath extends LinearOpMode {
         return Paths.line(point7, point8).tangent();
     }
 }
-

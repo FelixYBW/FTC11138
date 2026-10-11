@@ -1,137 +1,103 @@
 package org.firstinspires.ftc.teamcode;
 
+import com.pedropathing.api.Paths;
+import com.pedropathing.api.PoseFactory;
 import com.pedropathing.follower.Follower;
-import com.pedropathing.geometry.BezierLine;
-import com.pedropathing.geometry.Pose;
-import com.pedropathing.ivy.Command;
-import com.pedropathing.ivy.Scheduler;
-import com.pedropathing.paths.PathChain;
+import com.pedropathing.math.Pose;
+import com.pedropathing.paths.Path;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 
-import static com.pedropathing.ivy.Scheduler.schedule;
-import static com.pedropathing.ivy.commands.Commands.instant;
-import static com.pedropathing.ivy.groups.Groups.sequential;
-import static com.pedropathing.ivy.pedro.PedroCommands.follow;
-
 /**
- * path.java translated line-for-line from the Pedro Pathing 3.x API it was generated for to the
- * Pedro 2.1.2 API this project uses. Same poses, same 8 tangent-heading lines, same
- * sequential(follow(...)) routine: each follow runs to completion, so the robot brakes and
- * settles at every point before the next move.
+ * path.java on Pedro Pathing 3.0, the version it was generated for. The poses, paths and
+ * telemetry are path.java's own code. The only change is the routine: path.java runs
+ * sequential(follow(...), ...) from the ivy command library, which has no Pedro 3 release, so
+ * this runs the same sequence with a loop. Each path runs until the follower finishes it, so the
+ * robot settles at every point before the next move, as in path.java.
  */
 @Autonomous(name = "AutoPath_Generated", group = "Autonomous")
 public class AutoPathGenerated extends LinearOpMode {
 
     private Follower follower;
-    private int pathNumber = 0;
 
-    // path.java: PoseFactory.degrees().of(x, y, degrees)
-    private static Pose pose(double x, double y, double headingDegrees) {
-        return new Pose(x, y, Math.toRadians(headingDegrees));
-    }
+    private final PoseFactory poseFactory = PoseFactory.degrees();
 
-    private final Pose start = pose(55.4, 0, 90);
-    private final Pose path1 = pose(56, 26, 88.678);
-    private final Pose point2 = pose(52, 6, -101.3099);
-    private final Pose point3 = pose(0, 0, -173.4181);
-    private final Pose point4 = pose(0, 15, 90);
-    private final Pose point5 = pose(14, 15, 0);
-    private final Pose point6 = pose(14, 118, 90);
-    private final Pose point7 = pose(57, 118, 0);
-    private final Pose point8 = pose(57, 113, -90);
+    private final Pose start = poseFactory.of(55.4, 0, 90);
+    private final Pose path1 = poseFactory.of(56, 26, 88.678);
+    private final Pose point2 = poseFactory.of(52, 6, -101.3099);
+    private final Pose point3 = poseFactory.of(0, 0, -173.4181);
+    private final Pose point4 = poseFactory.of(0, 15, 90);
+    private final Pose point5 = poseFactory.of(14, 15, 0);
+    private final Pose point6 = poseFactory.of(14, 118, 90);
+    private final Pose point7 = poseFactory.of(57, 118, 0);
+    private final Pose point8 = poseFactory.of(57, 113, -90);
 
-    // Autonomous routine
-    public Command autoRoutine() {
-        return sequential(
-            move(1, path1()),
-            move(2, path2()),
-            move(3, path3()),
-            move(4, path4()),
-            move(5, path5()),
-            move(6, path6()),
-            move(7, path7()),
-            move(8, path8())
-        );
-    }
-
-    // follow(follower, path) plus a move counter for telemetry. path.java shows
-    // follower.pathIndex(), which is always 0 here because each follow runs a single path.
-    private Command move(int number, PathChain path) {
-        return sequential(
-            instant(() -> pathNumber = number),
-            follow(follower, path)
-        );
+    // Autonomous routine: path.java's sequential(follow(follower, path1()), ...).
+    private Path[] autoRoutine() {
+        return new Path[]{path1(), path2(), path3(), path4(), path5(), path6(), path7(), path8()};
     }
 
     @Override
     public void runOpMode() {
-        Scheduler.reset();
-        follower = Constants.createFollower(hardwareMap);   // path.java: Constants.create(hardwareMap)
-        follower.setStartingPose(start);                     // path.java: follower.setPose(start)
+        follower = Constants.create(hardwareMap);
+        follower.setPose(start);
         follower.update();
+        Path[] routine = autoRoutine();
+        int next = 0;
 
         waitForStart();
-        schedule(autoRoutine());
 
         while (opModeIsActive()) {
             follower.update();
-            Scheduler.execute();
+            // Start the next path once the current one has finished (path.java's sequential).
+            if (!follower.isBusy() && next < routine.length) {
+                follower.follow(routine[next++]);
+            }
 
-            Pose pose = follower.getPose();                  // path.java: follower.pose()
-            telemetry.addData("x", pose.getX());
-            telemetry.addData("y", pose.getY());
-            telemetry.addData("heading (deg)", Math.toDegrees(pose.getHeading()));
+            telemetry.addData("x", follower.pose().x());
+            telemetry.addData("y", follower.pose().y());
+            telemetry.addData("heading", follower.pose().heading());
 
-            if (follower.getCurrentPath() != null) {         // path.java: follower.currentPath()
-                // path.java: follower.distanceToEndpoint()
-                telemetry.addData("Current path distance remaining",
-                        follower.getCurrentPath().endPose().distanceFrom(pose));
-                telemetry.addData("Path number", pathNumber);
+            if (follower.currentPath() != null) {
+                telemetry.addData("Current path distance remaining", follower.distanceToEndpoint());
+                // follower.pathIndex() counts segments within one path; each path here is one segment.
+                telemetry.addData("Path number", next);
             }
 
             telemetry.update();
         }
     }
 
-    // path.java: Paths.line(a, b).tangent()
-    private PathChain line(Pose from, Pose to) {
-        return follower.pathBuilder()
-                .addPath(new BezierLine(from, to))
-                .setTangentHeadingInterpolation()
-                .build();
+    public Path path1() {
+        return Paths.line(start, path1).tangent();
     }
 
-    public PathChain path1() {
-        return line(start, path1);
+    public Path path2() {
+        return Paths.line(path1, point2).tangent();
     }
 
-    public PathChain path2() {
-        return line(path1, point2);
+    public Path path3() {
+        return Paths.line(point2, point3).tangent();
     }
 
-    public PathChain path3() {
-        return line(point2, point3);
+    public Path path4() {
+        return Paths.line(point3, point4).tangent();
     }
 
-    public PathChain path4() {
-        return line(point3, point4);
+    public Path path5() {
+        return Paths.line(point4, point5).tangent();
     }
 
-    public PathChain path5() {
-        return line(point4, point5);
+    public Path path6() {
+        return Paths.line(point5, point6).tangent();
     }
 
-    public PathChain path6() {
-        return line(point5, point6);
+    public Path path7() {
+        return Paths.line(point6, point7).tangent();
     }
 
-    public PathChain path7() {
-        return line(point6, point7);
-    }
-
-    public PathChain path8() {
-        return line(point7, point8);
+    public Path path8() {
+        return Paths.line(point7, point8).tangent();
     }
 }

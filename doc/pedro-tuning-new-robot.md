@@ -1,5 +1,7 @@
 # Finding the Pedro Pathing Constants for a New Robot
 
+> **Branch `pedro-3`:** this doc describes Pedro Pathing **2.1.2**. This branch is on 3.0.1; see [pedro-3-upgrade.md](pedro-3-upgrade.md) for what still applies.
+
 This guide walks through **every value** in
 [`Constants.java`](../TeamCode/src/main/java/org/firstinspires/ftc/teamcode/pedroPathing/Constants.java):
 where it comes from, how to measure or calculate it, and what a sane result looks like.

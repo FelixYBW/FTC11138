@@ -1,5 +1,7 @@
 # Three Ways to Drive from Point to Point
 
+> **Branch `pedro-3`:** this doc describes Pedro Pathing **2.1.2**. This branch is on 3.0.1; see [pedro-3-upgrade.md](pedro-3-upgrade.md) for what still applies.
+
 This project has three ways of driving the robot from (fromX, fromY) to (toX, toY):
 
 1. **`path.java`**: auto-generated code at the repo root.

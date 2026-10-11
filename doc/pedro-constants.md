@@ -1,5 +1,7 @@
 # Defining Pedro Pathing Constants
 
+> **Branch `pedro-3`:** this doc describes Pedro Pathing **2.1.2**. This branch is on 3.0.1; see [pedro-3-upgrade.md](pedro-3-upgrade.md) for what still applies.
+
 All robot-specific settings for Pedro Pathing (v2.1.2) live in
 [`TeamCode/.../pedroPathing/Constants.java`](../TeamCode/src/main/java/org/firstinspires/ftc/teamcode/pedroPathing/Constants.java).
 Four objects describe the robot, and `createFollower()` combines them into a `Follower`:

@@ -1,7 +1,8 @@
 package org.firstinspires.ftc.teamcode;
 
 import com.pedropathing.follower.Follower;
-import com.pedropathing.geometry.Pose;
+import com.pedropathing.follower.ManualDrive;
+import com.pedropathing.math.Pose;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.util.ElapsedTime;
@@ -67,8 +68,8 @@ public class AutoPath extends LinearOpMode {
 
     @Override
     public void runOpMode() {
-        follower = Constants.createFollower(hardwareMap);
-        follower.setStartingPose(new Pose(POINTS[0][0], POINTS[0][1], Math.toRadians(START_HEADING_DEGREES)));
+        follower = Constants.create(hardwareMap);
+        follower.setPose(new Pose(POINTS[0][0], POINTS[0][1], Math.toRadians(START_HEADING_DEGREES)));
 
         // Show the live position during INIT, so odometry can be checked by pushing the robot.
         while (opModeInInit()) {
@@ -76,7 +77,6 @@ public class AutoPath extends LinearOpMode {
             phase = "init";
             report(0, 0, 0);
         }
-        follower.startTeleopDrive(true);
 
         for (int i = 1; i < POINTS.length && opModeIsActive(); i++) {
             pathNumber = i;
@@ -85,15 +85,15 @@ public class AutoPath extends LinearOpMode {
             double tangentHeading = Math.atan2(to[1] - from[1], to[0] - from[0]);
 
             String turnResult = "no turn";
-            if (Math.abs(AngleUnit.normalizeRadians(tangentHeading - follower.getHeading())) > TURN_IN_PLACE_RADIANS) {
+            if (Math.abs(AngleUnit.normalizeRadians(tangentHeading - follower.pose().heading())) > TURN_IN_PLACE_RADIANS) {
                 turnResult = turnTo(tangentHeading);
             }
             String result = driveTo(to[0], to[1], tangentHeading);
 
-            Pose pose = follower.getPose();
+            Pose pose = follower.pose();
             arrivals.add(String.format("P%d (%.0f, %.0f) -> (%.1f, %.1f) %.1f°, off by %.1f in, %s",
-                    i, to[0], to[1], pose.getX(), pose.getY(), Math.toDegrees(follower.getHeading()),
-                    Math.hypot(to[0] - pose.getX(), to[1] - pose.getY()), result));
+                    i, to[0], to[1], pose.x(), pose.y(), Math.toDegrees(follower.pose().heading()),
+                    Math.hypot(to[0] - pose.x(), to[1] - pose.y()), result));
             arrivals.add("    turn before P" + i + ": " + turnResult);
         }
 
@@ -114,7 +114,7 @@ public class AutoPath extends LinearOpMode {
         phase = "turn";
         ElapsedTime loopTimer = new ElapsedTime();
         ElapsedTime timer = new ElapsedTime();
-        Pose hold = follower.getPose();
+        Pose hold = follower.pose();
         double lastError = headingError(targetHeading);
         ElapsedTime settleTimer = new ElapsedTime();
         boolean settling = false;
@@ -142,11 +142,11 @@ public class AutoPath extends LinearOpMode {
             }
 
             // Hold position with the drive PID's P term so the turn doesn't wander.
-            Pose pose = follower.getPose();
-            double driveX = Range.clip(KP * (hold.getX() - pose.getX()), -1, 1);
-            double driveY = Range.clip(KP * (hold.getY() - pose.getY()), -1, 1);
-            follower.setTeleOpDrive(driveX, driveY, headingCorrection(error, rate), false);
-            report(hold.getX() - pose.getX(), hold.getY() - pose.getY(), 0);
+            Pose pose = follower.pose();
+            double driveX = Range.clip(KP * (hold.x() - pose.x()), -1, 1);
+            double driveY = Range.clip(KP * (hold.y() - pose.y()), -1, 1);
+            follower.manual(ManualDrive.fieldCentric(driveX, driveY, headingCorrection(error, rate), follower.pose().heading()));
+            report(hold.x() - pose.x(), hold.y() - pose.y(), 0);
         }
         return String.format("TIMEOUT %.1fs: hdg %.1f°", timer.seconds(), Math.toDegrees(error));
     }
@@ -160,8 +160,8 @@ public class AutoPath extends LinearOpMode {
         ElapsedTime loopTimer = new ElapsedTime();
         ElapsedTime timer = new ElapsedTime();
         double integral = 0;
-        Pose startPose = follower.getPose();
-        double lastDistance = Math.hypot(targetX - startPose.getX(), targetY - startPose.getY());
+        Pose startPose = follower.pose();
+        double lastDistance = Math.hypot(targetX - startPose.x(), targetY - startPose.y());
         double lastHeadingError = headingError(targetHeading);
         double distance = lastDistance;
         double derivative = 0;
@@ -172,9 +172,9 @@ public class AutoPath extends LinearOpMode {
             double dt = loopTimer.seconds();
             loopTimer.reset();
 
-            Pose pose = follower.getPose();
-            double dx = targetX - pose.getX();
-            double dy = targetY - pose.getY();
+            Pose pose = follower.pose();
+            double dx = targetX - pose.x();
+            double dy = targetY - pose.y();
             distance = Math.hypot(dx, dy);
             derivative = dt > 0 ? (distance - lastDistance) / dt : 0;
             lastDistance = distance;
@@ -201,7 +201,7 @@ public class AutoPath extends LinearOpMode {
             // Field-centric drive vector pointing from the robot straight at the target.
             double driveX = distance > 0 ? power * dx / distance : 0;
             double driveY = distance > 0 ? power * dy / distance : 0;
-            follower.setTeleOpDrive(driveX, driveY, headingCorrection(error, rate), false);
+            follower.manual(ManualDrive.fieldCentric(driveX, driveY, headingCorrection(error, rate), follower.pose().heading()));
             report(dx, dy, power);
         }
 
@@ -212,7 +212,7 @@ public class AutoPath extends LinearOpMode {
     }
 
     private double headingError(double targetHeading) {
-        return AngleUnit.normalizeRadians(targetHeading - follower.getHeading());
+        return AngleUnit.normalizeRadians(targetHeading - follower.pose().heading());
     }
 
     /** Positive turn is counter-clockwise (heading increases), so it follows the error's sign. */
@@ -222,15 +222,15 @@ public class AutoPath extends LinearOpMode {
     }
 
     private void stopDrive() {
-        follower.setTeleOpDrive(0, 0, 0, false);
+        follower.manual(0, 0, 0);
         follower.update();
     }
 
     private void report(double dx, double dy, double power) {
-        Pose pose = follower.getPose();
+        Pose pose = follower.pose();
         telemetry.addData("Path number", "%d (%s)", pathNumber, phase);
-        telemetry.addData("x / y (in)", "%.1f / %.1f", pose.getX(), pose.getY());
-        telemetry.addData("heading (deg)", "%.1f", Math.toDegrees(follower.getHeading()));
+        telemetry.addData("x / y (in)", "%.1f / %.1f", pose.x(), pose.y());
+        telemetry.addData("heading (deg)", "%.1f", Math.toDegrees(follower.pose().heading()));
         telemetry.addData("Distance remaining (in)", "%.1f", Math.hypot(dx, dy));
         telemetry.addData("Power", "%.2f", power);
         for (String arrival : arrivals) {

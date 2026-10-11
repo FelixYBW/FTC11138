@@ -1,7 +1,8 @@
 package org.firstinspires.ftc.teamcode;
 
 import com.pedropathing.follower.Follower;
-import com.pedropathing.geometry.Pose;
+import com.pedropathing.follower.ManualDrive;
+import com.pedropathing.math.Pose;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.util.ElapsedTime;
@@ -35,11 +36,10 @@ public class DriveForwardOneMeter extends LinearOpMode {
 
     @Override
     public void runOpMode() {
-        Follower follower = Constants.createFollower(hardwareMap);
-        follower.setStartingPose(new Pose(START_X, START_Y, HEADING));
+        Follower follower = Constants.create(hardwareMap);
+        follower.setPose(new Pose(START_X, START_Y, HEADING));
 
         waitForStart();
-        follower.startTeleopDrive(true);
 
         ElapsedTime loopTimer = new ElapsedTime();
         ElapsedTime runTimer = new ElapsedTime();
@@ -51,9 +51,9 @@ public class DriveForwardOneMeter extends LinearOpMode {
             double dt = loopTimer.seconds();
             loopTimer.reset();
 
-            Pose pose = follower.getPose();
-            double dx = TARGET_X - pose.getX();
-            double dy = TARGET_Y - pose.getY();
+            Pose pose = follower.pose();
+            double dx = TARGET_X - pose.x();
+            double dy = TARGET_Y - pose.y();
             double distance = Math.hypot(dx, dy);
             double derivative = dt > 0 ? (distance - lastDistance) / dt : 0;
             lastDistance = distance;
@@ -74,20 +74,20 @@ public class DriveForwardOneMeter extends LinearOpMode {
             double driveX = distance > 0 ? power * dx / distance : 0;
             double driveY = distance > 0 ? power * dy / distance : 0;
 
-            double headingError = AngleUnit.normalizeRadians(HEADING - follower.getHeading());
+            double headingError = AngleUnit.normalizeRadians(HEADING - follower.pose().heading());
             // Positive turn is counter-clockwise (heading increases), so it follows the error's sign.
             double turn = Range.clip(HEADING_KP * headingError, -0.5, 0.5);
 
-            follower.setTeleOpDrive(driveX, driveY, turn, false);
+            follower.manual(ManualDrive.fieldCentric(driveX, driveY, turn, follower.pose().heading()));
 
-            telemetry.addData("X / Y (in)", "%.1f / %.1f", pose.getX(), pose.getY());
+            telemetry.addData("X / Y (in)", "%.1f / %.1f", pose.x(), pose.y());
             telemetry.addData("Distance left (in)", distance);
             telemetry.addData("Power", power);
             telemetry.addData("P / I / D", "%.2f / %.2f / %.2f", KP * distance, KI * integral, KD * derivative);
             telemetry.update();
         }
 
-        follower.setTeleOpDrive(0, 0, 0, false);
+        follower.manual(0, 0, 0);
         follower.update();
     }
 }
